@@ -28,7 +28,7 @@ x-dc { display:none; }
 </style>
 </helmet>
 
-<div data-content-source="{{ dataSource }}" data-featured-apple="{{ featuredAppleName }}" style="min-height:100vh; background:#CEC7B5; display:flex; justify-content:center; padding:0;">
+<div data-content-source="{{ dataSource }}" data-featured-apple="{{ featuredAppleName }}" data-last-sync="{{ lastSync }}" style="min-height:100vh; background:#CEC7B5; display:flex; justify-content:center; padding:0;">
   <div style="width:100%; max-width:430px; min-height:100vh; background:#F7F3EA; position:relative; display:flex; flex-direction:column;">
 
     <!-- STICKY HEADER -->
@@ -300,10 +300,20 @@ x-dc { display:none; }
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 430}}">
 class Component extends DCLogic {
-  state = { page: 'home', menuOpen: false, dataSource: 'local-fallback' };
+  state = { page: 'home', menuOpen: false, dataSource: 'local-fallback', lastSync: '' };
 
   componentDidMount() {
     this.loadGoogleSheets();
+    this.refreshTimer = setInterval(() => this.loadGoogleSheets(), 60000);
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible') this.loadGoogleSheets();
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.refreshTimer);
+    document.removeEventListener('visibilitychange', this.visibilityHandler);
   }
 
   loadSheet(sheetName) {
@@ -316,7 +326,8 @@ class Component extends DCLogic {
       Conseils: '704780001',
     };
     const url = 'https://docs.google.com/spreadsheets/d/' + spreadsheetId +
-      '/export?format=csv&gid=' + sheetIds[sheetName];
+      '/export?format=csv&gid=' + sheetIds[sheetName] +
+      '&cachebust=' + Date.now();
 
     return fetch(url, { cache: 'no-store' })
       .then((response) => {
@@ -376,6 +387,9 @@ class Component extends DCLogic {
   }
 
   async loadGoogleSheets() {
+    if (this.loadingSheets) return;
+    this.loadingSheets = true;
+
     try {
       const [accueilRows, momentRows, varietyRows, recipeRows, tipRows] = await Promise.all([
         this.loadSheet('Accueil'),
@@ -418,12 +432,15 @@ class Component extends DCLogic {
         tips: tips.length ? tips : undefined,
         featuredApple,
         dataSource: 'google-sheets',
+        lastSync: new Date().toISOString(),
       });
       window.__VERGER_DATA_SOURCE__ = 'google-sheets';
     } catch (error) {
       this.setState({ dataSource: 'local-fallback' });
       window.__VERGER_DATA_SOURCE__ = 'local-fallback';
       console.warn('[Le Carnet du Verger] Données locales utilisées :', error.message);
+    } finally {
+      this.loadingSheets = false;
     }
   }
 
@@ -506,6 +523,7 @@ class Component extends DCLogic {
     return {
       page, menuOpen, accueil, varieties, guides, recipes, vinSteps, tips,
       dataSource: this.state.dataSource,
+      lastSync: this.state.lastSync,
       featuredApple: this.state.featuredApple || null,
       featuredAppleName: this.state.featuredApple ? this.state.featuredApple.nom : '',
       isHome: page === 'home',
