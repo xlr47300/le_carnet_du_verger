@@ -102,7 +102,7 @@ x-dc { display:none; }
             <div onClick="{{ goToVarietes }}" style="cursor:pointer; background:#FDFAF3; border:1px solid rgba(44,26,14,0.09); border-radius:8px; padding:18px 16px 16px; width:calc(50% - 5px); box-shadow:0 1px 4px rgba(0,0,0,0.04);" style-hover="transform:translateY(-2px); box-shadow:0 5px 14px rgba(0,0,0,0.09);">
               <div style="font-size:9px; letter-spacing:1.3px; text-transform:uppercase; color:#B83320; font-family:'DM Sans',sans-serif; font-weight:500; margin-bottom:9px;">Connaître</div>
               <div style="font-family:'Cormorant Garant',serif; font-size:20px; font-weight:600; color:#2C1A0E; line-height:1.15; margin-bottom:5px;">Les variétés</div>
-              <div style="font-size:11px; color:#9A7A60; font-family:'DM Sans',sans-serif; line-height:1.5; font-weight:300;">6 pommes du verger</div>
+              <div style="font-size:11px; color:#9A7A60; font-family:'DM Sans',sans-serif; line-height:1.5; font-weight:300;">{{ varietiesCountLabel }}</div>
             </div>
 
             <div onClick="{{ goToChoisir }}" style="cursor:pointer; background:#FDFAF3; border:1px solid rgba(44,26,14,0.09); border-radius:8px; padding:18px 16px 16px; width:calc(50% - 5px); box-shadow:0 1px 4px rgba(0,0,0,0.04);" style-hover="transform:translateY(-2px); box-shadow:0 5px 14px rgba(0,0,0,0.09);">
@@ -237,13 +237,13 @@ x-dc { display:none; }
         <div style="padding:32px 22px 24px; border-bottom:1px solid rgba(44,26,14,0.08);">
           <div style="font-size:9px; letter-spacing:1.8px; text-transform:uppercase; color:#4A6B3A; font-family:'DM Sans',sans-serif; font-weight:500; margin-bottom:10px;">Artisanal</div>
           <div style="font-family:'Cormorant Garant',serif; font-size:33px; font-weight:600; color:#2C1A0E; line-height:1.05;">Vinaigre artisanal</div>
-          <div style="font-size:13px; color:#7A5230; font-family:'DM Sans',sans-serif; margin-top:10px; line-height:1.65; font-weight:300;">Élaboré au verger à partir des pommes de la saison. Une fermentation lente, sans additif.</div>
+          <div style="font-size:13px; color:#7A5230; font-family:'DM Sans',sans-serif; margin-top:10px; line-height:1.65; font-weight:300;">{{ vinegar.introduction }}</div>
         </div>
         <!-- Citation -->
         <div style="padding:24px 22px; border-bottom:1px solid rgba(44,26,14,0.07);">
           <div style="border-left:2px solid #B83320; padding-left:16px;">
-            <div style="font-family:'Cormorant Garant',serif; font-size:17px; font-style:italic; color:#5C3F28; line-height:1.8;">« Nous pressons les pommes de notre verger, puis nous laissons le temps faire son travail. Deux fermentations successives, plusieurs semaines de patience — et naît un vinaigre vivant, doux et fruité. »</div>
-            <div style="margin-top:10px; font-size:11px; color:#9A7A60; font-family:'DM Sans',sans-serif; font-weight:500; letter-spacing:0.3px;">— Tradipom, pomiculteurs</div>
+            <div style="font-family:'Cormorant Garant',serif; font-size:17px; font-style:italic; color:#5C3F28; line-height:1.8;">« {{ vinegar.citation }} »</div>
+            <div style="margin-top:10px; font-size:11px; color:#9A7A60; font-family:'DM Sans',sans-serif; font-weight:500; letter-spacing:0.3px;">— {{ vinegar.author }}</div>
           </div>
         </div>
         <!-- Steps -->
@@ -264,7 +264,7 @@ x-dc { display:none; }
         <!-- Usages -->
         <div style="margin:4px 22px 0; background:rgba(74,107,58,0.05); border:1px solid rgba(74,107,58,0.15); border-radius:8px; padding:18px 16px;">
           <div style="font-size:9px; letter-spacing:1.6px; text-transform:uppercase; color:#4A6B3A; font-family:'DM Sans',sans-serif; font-weight:500; margin-bottom:10px;">Utilisations</div>
-          <div style="font-size:13px; color:#5C3F28; font-family:'DM Sans',sans-serif; line-height:1.85; font-weight:300;">Assaisonnements et vinaigrettes · Marinades de viandes · Cure matinale (2 c.s. dans un verre d'eau tiède) · Entretien ménager naturel</div>
+          <div style="font-size:13px; color:#5C3F28; font-family:'DM Sans',sans-serif; line-height:1.85; font-weight:300;">{{ vinegar.uses }}</div>
         </div>
       </div>
     </sc-if>
@@ -320,8 +320,9 @@ class Component extends DCLogic {
     const spreadsheetId = '1dsrR3X1LIlnZZox0MoOBi-GoHJ9Qe0cs8uMni3hooWI';
     const sheetIds = {
       Accueil: '1886579035',
-      Pomme_du_moment: '2052079787',
       Varietes: '668539380',
+      Choisir: '700305544',
+      Vinaigre: '228288599',
       Recettes: '2038064312',
       Conseils: '704780001',
     };
@@ -391,10 +392,11 @@ class Component extends DCLogic {
     this.loadingSheets = true;
 
     try {
-      const [accueilRows, momentRows, varietyRows, recipeRows, tipRows] = await Promise.all([
+      const [accueilRows, varietyRows, guideRows, vinegarRows, recipeRows, tipRows] = await Promise.all([
         this.loadSheet('Accueil'),
-        this.loadSheet('Pomme_du_moment'),
         this.loadSheet('Varietes'),
+        this.loadSheet('Choisir'),
+        this.loadSheet('Vinaigre'),
         this.loadSheet('Recettes'),
         this.loadSheet('Conseils'),
       ]);
@@ -404,6 +406,21 @@ class Component extends DCLogic {
         .filter((row) => this.isActive(row.active))
         .sort((a, b) => Number(a.ordre) - Number(b.ordre))
         .map((row) => ({ name: row.nom, period: row.periode, desc: row.description, useTag: row.usage }));
+      const guides = guideRows
+        .filter((row) => this.isActive(row.active))
+        .sort((a, b) => Number(a.ordre) - Number(b.ordre))
+        .map((row) => ({ usage: row.usage, varieties: row.varietes, note: row.note }));
+      const vinegarContents = vinegarRows
+        .filter((row) => this.isActive(row.active) && String(row.type).trim().toLowerCase() === 'contenu');
+      const vinegarValues = Object.fromEntries(vinegarContents.map((row) => [row.cle, row.texte]));
+      const vinSteps = vinegarRows
+        .filter((row) => this.isActive(row.active) && String(row.type).trim().toLowerCase() === 'etape')
+        .sort((a, b) => Number(a.ordre) - Number(b.ordre))
+        .map((row) => ({
+          num: String(row.ordre).padStart(2, '0'),
+          title: row.titre,
+          text: row.texte,
+        }));
       const recipes = recipeRows
         .filter((row) => this.isActive(row.active))
         .sort((a, b) => Number(a.ordre) - Number(b.ordre))
@@ -419,8 +436,6 @@ class Component extends DCLogic {
         .filter((row) => this.isActive(row.active))
         .sort((a, b) => Number(a.ordre) - Number(b.ordre))
         .map((row) => ({ num: String(row.numero).padStart(2, '0'), title: row.titre, text: row.texte }));
-      const featuredApple = momentRows.find((row) => this.isActive(row.active)) || null;
-
       this.setState({
         accueil: {
           title1: accueilValues.titre_ligne_1 || 'Le Carnet',
@@ -428,9 +443,16 @@ class Component extends DCLogic {
           text: accueilValues.texte || "Pommes, saisons, recettes et savoir-faire d'ici.",
         },
         varieties: varieties.length ? varieties : undefined,
+        guides: guides.length ? guides : undefined,
+        vinegar: {
+          introduction: vinegarValues.introduction,
+          citation: vinegarValues.citation,
+          author: vinegarValues.auteur,
+          uses: vinegarValues.utilisations,
+        },
+        vinSteps: vinSteps.length ? vinSteps : undefined,
         recipes: recipes.length ? recipes : undefined,
         tips: tips.length ? tips : undefined,
-        featuredApple,
         dataSource: 'google-sheets',
         lastSync: new Date().toISOString(),
       });
@@ -461,7 +483,7 @@ class Component extends DCLogic {
       { name: 'Granny Smith', period: 'Oct — Avril', desc: 'Verte, croquante et bien acidulée. Rafraîchissante à croquer, équilibrante dans une tarte.', useTag: 'Croquer · Tarte' },
     ];
 
-    const guides = [
+    const defaultGuides = [
       { usage: 'Pour croquer', varieties: 'Gala, Cox, Golden', note: 'Fraîches, fermes, sucrées ou acidulées selon l\'envie. Croquer une bonne pomme du verger, c\'est le plaisir le plus simple.' },
       { usage: 'Pour une tarte', varieties: 'Boskoop, Cox, Reinette', note: 'Ces variétés tiennent bien à la cuisson et révèlent pleinement leurs arômes sous la chaleur.' },
       { usage: 'Pour la compote', varieties: 'Golden, Reinette, Boskoop', note: 'Elles fondent facilement pour une texture douce et veloutée, avec peu de sucre ajouté.' },
@@ -496,7 +518,7 @@ class Component extends DCLogic {
       },
     ];
 
-    const vinSteps = [
+    const defaultVinSteps = [
       { num: '01', title: 'Presser', text: 'Les pommes de saison sont pressées à froid pour obtenir un jus frais, parfumé et naturellement sucré.' },
       { num: '02', title: 'Première fermentation', text: 'Le jus fermente naturellement 3 à 4 semaines. Les sucres se transforment en alcool : on obtient un cidre jeune.' },
       { num: '03', title: 'Acétification', text: 'La mère de vinaigre s\'installe et transforme l\'alcool en acide acétique pendant 6 à 8 semaines.' },
@@ -519,13 +541,21 @@ class Component extends DCLogic {
     const varieties = this.state.varieties || defaultVarieties;
     const recipes = this.state.recipes || defaultRecipes;
     const tips = this.state.tips || defaultTips;
+    const guides = this.state.guides || defaultGuides;
+    const vinSteps = this.state.vinSteps || defaultVinSteps;
+    const vinegar = {
+      introduction: this.state.vinegar?.introduction || 'Élaboré au verger à partir des pommes de la saison. Une fermentation lente, sans additif.',
+      citation: this.state.vinegar?.citation || 'Nous pressons les pommes de notre verger, puis nous laissons le temps faire son travail. Deux fermentations successives, plusieurs semaines de patience — et naît un vinaigre vivant, doux et fruité.',
+      author: this.state.vinegar?.author || 'Tradipom, pomiculteurs',
+      uses: this.state.vinegar?.uses || "Assaisonnements et vinaigrettes · Marinades de viandes · Cure matinale (2 c.s. dans un verre d'eau tiède) · Entretien ménager naturel",
+    };
+    const varietiesCountLabel = varieties.length + (varieties.length > 1 ? ' pommes du verger' : ' pomme du verger');
 
     return {
-      page, menuOpen, accueil, varieties, guides, recipes, vinSteps, tips,
+      page, menuOpen, accueil, varieties, varietiesCountLabel, guides, vinegar, recipes, vinSteps, tips,
       dataSource: this.state.dataSource,
       lastSync: this.state.lastSync,
-      featuredApple: this.state.featuredApple || null,
-      featuredAppleName: this.state.featuredApple ? this.state.featuredApple.nom : '',
+      featuredAppleName: '',
       isHome: page === 'home',
       isNotHome: page !== 'home',
       isVarietes: page === 'varietes',
